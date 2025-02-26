@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkers Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f8f8f8;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            border: 5px solid black;
+            margin-top: 20px;
+        }
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .black {
+            background-color: black;
+        }
+        .white {
+            background-color: white;
+        }
+        .piece {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 20px;
+        }
+        .red-piece {
+            background-color: red;
+        }
+        .blue-piece {
+            background-color: blue;
+        }
+        .king {
+            border: 3px solid gold;
+        }
+        .rules {
+            text-align: center;
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            width: 60%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .scoreboard {
+            margin-top: 10px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="rules">
+        <h3>How to Play Checkers</h3>
+        <p>1. Players take turns moving pieces diagonally forward.</p>
+        <p>2. Capture opponent's pieces by jumping over them.</p>
+        <p>3. Reach the last row to become a king and move backward.</p>
+        <p>4. The player who captures all opponent's pieces wins.</p>
+    </div>
+    <div class="scoreboard">Red: <span id="redScore">12</span> - Blue: <span id="blueScore">12</span></div>
+    <div class="board" id="board"></div>
+    <script>
+        const board = document.getElementById("board");
+        const redScoreEl = document.getElementById("redScore");
+        const blueScoreEl = document.getElementById("blueScore");
+        let redScore = 12;
+        let blueScore = 12;
+        let selectedPiece = null;
+        let selectedSquare = null;
+        
+        function createBoard() {
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement("div");
+                    square.classList.add("square", (row + col) % 2 === 0 ? "white" : "black");
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    if ((row + col) % 2 !== 0 && row < 3) {
+                        createPiece(square, "red-piece");
+                    }
+                    if ((row + col) % 2 !== 0 && row > 4) {
+                        createPiece(square, "blue-piece");
+                    }
+                    square.addEventListener("click", () => movePiece(square));
+                    board.appendChild(square);
+                }
+            }
+        }
+        
+        function createPiece(square, color) {
+            const piece = document.createElement("div");
+            piece.classList.add("piece", color);
+            square.appendChild(piece);
+        }
+        
+        function movePiece(targetSquare) {
+            if (selectedPiece) {
+                const startRow = parseInt(selectedSquare.dataset.row);
+                const startCol = parseInt(selectedSquare.dataset.col);
+                const targetRow = parseInt(targetSquare.dataset.row);
+                const targetCol = parseInt(targetSquare.dataset.col);
+                const rowDiff = targetRow - startRow;
+                const colDiff = Math.abs(targetCol - startCol);
+                
+                if (!targetSquare.hasChildNodes() && targetSquare.classList.contains("black")) {
+                    if ((selectedPiece.classList.contains("red-piece") && rowDiff === 1) ||
+                        (selectedPiece.classList.contains("blue-piece") && rowDiff === -1) ||
+                        (selectedPiece.classList.contains("king") && Math.abs(rowDiff) === 1)) {
+                        targetSquare.appendChild(selectedPiece);
+                        checkKing(selectedPiece, targetRow);
+                    } else if (Math.abs(rowDiff) === 2 && colDiff === 2) {
+                        const middleRow = (startRow + targetRow) / 2;
+                        const middleCol = (startCol + targetCol) / 2;
+                        const middleSquare = document.querySelector(`[data-row='${middleRow}'][data-col='${middleCol}']`);
+                        if (middleSquare.hasChildNodes()) {
+                            const middlePiece = middleSquare.firstChild;
+                            if ((selectedPiece.classList.contains("red-piece") && middlePiece.classList.contains("blue-piece")) ||
+                                (selectedPiece.classList.contains("blue-piece") && middlePiece.classList.contains("red-piece"))) {
+                                middleSquare.removeChild(middlePiece);
+                                targetSquare.appendChild(selectedPiece);
+                                checkKing(selectedPiece, targetRow);
+                                updateScore(middlePiece);
+                            }
+                        }
+                    }
+                }
+                selectedPiece = null;
+                selectedSquare = null;
+                checkWinner();
+            } else {
+                if (targetSquare.hasChildNodes()) {
+                    selectedPiece = targetSquare.firstChild;
+                    selectedSquare = targetSquare;
+                }
+            }
+        }
+        
+        function checkKing(piece, row) {
+            if ((piece.classList.contains("red-piece") && row === 7) || (piece.classList.contains("blue-piece") && row === 0)) {
+                piece.classList.add("king");
+                piece.textContent = "K";
+            }
+        }
+        
+        function updateScore(piece) {
+            if (piece.classList.contains("red-piece")) {
+                redScore--;
+                redScoreEl.textContent = redScore;
+            } else {
+                blueScore--;
+                blueScoreEl.textContent = blueScore;
+            }
+        }
+        
+        function checkWinner() {
+            if (redScore === 0) alert("Blue wins!");
+            if (blueScore === 0) alert("Red wins!");
+        }
+        
+        createBoard();
+    </script>
+</body>
+</html>
